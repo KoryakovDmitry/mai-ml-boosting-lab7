@@ -44,6 +44,23 @@ class Boosting:
         self.loss_derivative = lambda y, z: -y * self.sigmoid(-y * z)
 
     def fit_new_base_model(self, x, y, predictions):
+        """
+        Обучает новую базовую модель и добавляет ее в ансамбль.
+
+        Параметры
+        ----------
+        x : array-like, форма (n_samples, n_features)
+            Массив признаков для набора данных.
+        y : array-like, форма (n_samples,)
+            Массив целевых значений.
+        predictions : array-like, форма (n_samples,)
+            Предсказания текущего ансамбля.
+
+        Примечания
+        ----------
+        Эта функция добавляет новую модель и обновляет ансамбль.
+        """
+
         # Generate a bootstrap sample
         sample_size = int(self.subsample * x.shape[0])
         indices = np.random.choice(x.shape[0], size=sample_size, replace=True)
@@ -65,6 +82,20 @@ class Boosting:
         return gamma, new_predictions
 
     def fit(self, x_train, y_train, x_valid, y_valid):
+        """
+        Обучает модель на тренировочном наборе данных и выполняет валидацию на валидационном наборе.
+
+        Параметры
+        ----------
+        x_train : array-like, форма (n_samples, n_features)
+            Массив признаков для тренировочного набора.
+        y_train : array-like, форма (n_samples,)
+            Массив целевых значений для тренировочного набора.
+        x_valid : array-like, форма (n_samples, n_features)
+            Массив признаков для валидационного набора.
+        y_valid : array-like, форма (n_samples,)
+            Массив целевых значений для валидационного набора.
+        """
         train_predictions = np.zeros(y_train.shape[0])
         valid_predictions = np.zeros(y_valid.shape[0])
 
@@ -93,6 +124,19 @@ class Boosting:
             plt.show()
 
     def predict_proba(self, x):
+        """
+        Вычисляет вероятности принадлежности классу для каждого образца.
+
+        Параметры
+        ----------
+        x : array-like, форма (n_samples, n_features)
+            Массив признаков для набора данных.
+
+        Возвращает
+        ----------
+        probabilities : array-like, форма (n_samples, n_classes)
+            Вероятности для каждого класса.
+        """
         predictions = np.zeros(x.shape[0])
         for gamma, model in zip(self.gammas, self.models):
             predictions += self.learning_rate * gamma * model.predict(x)
@@ -102,6 +146,27 @@ class Boosting:
         return np.vstack([1 - probabilities, probabilities]).T
 
     def find_optimal_gamma(self, y, old_predictions, new_predictions) -> float:
+        """
+        Находит оптимальное значение гаммы для минимизации функции потерь.
+
+        Параметры
+        ----------
+        y : array-like, форма (n_samples,)
+            Целевые значения.
+        old_predictions : array-like, форма (n_samples,)
+            Предыдущие предсказания ансамбля.
+        new_predictions : array-like, форма (n_samples,)
+            Новые предсказания базовой модели.
+
+        Возвращает
+        ----------
+        gamma : float
+            Оптимальное значение гаммы.
+
+        Примечания
+        ----------
+        Значение гаммы определяется путем минимизации функции потерь.
+        """
         gammas = np.linspace(start=0, stop=1, num=100)
         losses = [self.loss_fn(y, old_predictions + gamma * new_predictions) for gamma in gammas]
         return gammas[np.argmin(losses)]
@@ -111,6 +176,18 @@ class Boosting:
 
     @property
     def feature_importances_(self):
+        """
+        Возвращает важность признаков в обученной модели.
+
+        Возвращает
+        ----------
+        importances : array-like, форма (n_features,)
+            Важность каждого признака.
+
+        Примечания
+        ----------
+        Важность признаков определяется по вкладу каждого признака в финальную модель.
+        """
         total_importances = np.zeros(self.models[0].feature_importances_.shape)
         for model in self.models:
             total_importances += model.feature_importances_
